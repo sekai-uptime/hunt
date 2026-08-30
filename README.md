@@ -1,2 +1,2 @@
-# echo
-External Check and Host Observer
+# HUNT
+Host Uptime and Network Tracker
