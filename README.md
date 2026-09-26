@@ -1,4 +1,5 @@
 # Network Checker API 🛠️
+[Persian Document](https://github.com/sekai-uptime/hunt/blob/main/README_fa.md)
 
 A lightweight and practical **PHP** script/API designed to monitor network connectivity, test socket response times, query DNS records, and fetch HTTP request details. Responses are returned in a clean, structured **JSON** format.
 
