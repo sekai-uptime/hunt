@@ -15,7 +15,7 @@ $mode = match ($_GET['mode']) {
     'status' => check_url_status($parms['host']),
     'dns' => check_dns($parms['host'], $parms['dns_record']),
 
-    default => JsonResponse(['error' => 'invaild mode']),
+    default => JsonResponse(['error' => 'invaild mode parameter']),
 };
 
 // ----------------------
@@ -117,12 +117,12 @@ function check_parms(): void
     // check mode and host parms passed or not
     if (isset($_GET['mode'])) {
     } else {
-        JsonResponse(['error' => 'mode not found']);
+        JsonResponse(['error' => 'mode parameter not found']);
     }
 
     if (isset($_GET['host'])) {
     } else {
-        JsonResponse(['error' => 'host not found']);
+        JsonResponse(['error' => 'host parameter not found']);
     }
 }
 
