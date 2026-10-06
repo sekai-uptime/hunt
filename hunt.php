@@ -29,14 +29,15 @@ function get_ping(string $host, int $port, int $timeout)
     $error = [];
 
     $startTimer = microtime(true);
-    fsockopen($host, $port, $error['code'], $error['msg'], $timeout);
+    // TODO use stream_socket_client insted fsockopen
+    $conection = @fsockopen($host, $port, $error['code'], $error['msg'], $timeout);
     $endTimer = microtime(true);
+
     $time = $endTimer - $startTimer;
     $time = round($time, 3) * 1000;
 
-
     // sometimes socket only throw error msg
-    if (strlen($error['msg']) != 0 || $error['code'] != 0) {
+    if (strlen($error['msg']) != 0 || $error['code'] != 0 || $conection == false) {
         $error = true;
     } else {
         $error = false;
@@ -53,7 +54,7 @@ function get_ping(string $host, int $port, int $timeout)
 // https://www.php.net/manual/en/network.constants.php#constant.dns-any
 function check_dns(string $host, int $record)
 {
-    $dns = dns_get_record($host, $record);
+    $dns = @dns_get_record($host, $record);
 
     if (!$dns) {
         JsonResponse(['error' => true]);
