@@ -9,11 +9,11 @@ ini_set('display_errors', 1);
 check_parms();
 $parms = get_parms();
 
-// get Chacker Mode
+// get chacker mode
 $mode = match ($_GET['mode']) {
     'ping' => get_ping($parms['host'], $parms['port'], $parms['timeout']),
-    'status' => check_url_status($parms['host']),
-    'dns' => check_dns($parms['host'], $parms['dns_record']),
+    'status' => check_url_status($parms['host'], $parms['timeout']),
+    'nslookup' => nslookup($parms['host'], $parms['dns']),
 
     default => JsonResponse(['error' => 'invaild mode parameter']),
 };
@@ -29,7 +29,6 @@ function get_ping(string $host, int $port, int $timeout)
     $error = [];
 
     $startTimer = microtime(true);
-    // TODO use stream_socket_client insted fsockopen
     $conection = @fsockopen($host, $port, $error['code'], $error['msg'], $timeout);
     $endTimer = microtime(true);
 
@@ -52,7 +51,7 @@ function get_ping(string $host, int $port, int $timeout)
 
 // to understand what mean by record number check this url
 // https://www.php.net/manual/en/network.constants.php#constant.dns-any
-function check_dns(string $host, int $record)
+function nslookup(string $host, int $record)
 {
     $dns = @dns_get_record($host, $record);
 
@@ -63,9 +62,9 @@ function check_dns(string $host, int $record)
     JsonResponse($dns);
 }
 
-function check_url_status(string $url)
+function check_url_status(string $url, int $timeout)
 {
-    $info = make_curl_request($url);
+    $info = make_curl_request($url, $timeout);
 
     if (!$info) {
         JsonResponse(['error' => true]);
@@ -89,7 +88,7 @@ function JsonResponse(array $data): void
     exit;
 }
 
-function make_curl_request(string $url): array | false
+function make_curl_request(string $url, int $timeout): array | false
 {
     // init curl
     $ch = curl_init($url);
@@ -97,7 +96,7 @@ function make_curl_request(string $url): array | false
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_TIMEOUT => 3,
+        CURLOPT_TIMEOUT => $timeout,
     ]);
 
     curl_exec($ch);
@@ -133,7 +132,7 @@ function get_parms(): array
         'host' => $_GET['host'],
         'port' => $_GET['port'] ?? 80,
         'timeout' => $_GET['timeout'] ?? 3,
-        'dns_record' => $_GET['dr'] ?? DNS_NS + DNS_A + DNS_A6,
+        'dns' => $_GET['dns'] ?? DNS_NS + DNS_A + DNS_A6,
         // $ssl = (bool) $_GET['ssl'] ?? false;
     ];
 }

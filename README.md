@@ -104,7 +104,7 @@ Query DNS records for a domain:
 
 **Request:**
 ```http
-GET http://localhost/hunt.php?mode=dns&host=google.com
+GET http://localhost/hunt.php?mode=nslookup&host=google.com
 ```
 
 **JSON Response:**

@@ -104,7 +104,7 @@ GET http://localhost/hunt.php?mode=status&host=https://google.com
 
 **درخواست:**
 ```http
-GET http://localhost/hunt.php?mode=dns&host=google.com
+GET http://localhost/hunt.php?mode=nslookup&host=google.com
 ```
 
 **نمونه خروجی JSON:**
