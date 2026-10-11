@@ -256,8 +256,8 @@ function normalize_host(string $host): string
     $isHostname = preg_match('/^(?=.{1,253}$)(?!-)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/', $host) === 1;
     $isLocalName = preg_match('/^(?=.{1,253}$)(?!-)[A-Za-z0-9.-]+(?<!-)$/', $host) === 1 && strpos($host, '.') === false;
 
-    if (!$isIp && !$isHostname && !$isLocalName) {
-        throw new InvalidArgumentException('Host parameter must be a valid hostname, IPv4, IPv6, or local name.');
+    if (!$isIp && !$isHostname && $isLocalName) {
+        throw new InvalidArgumentException('Host parameter must be a valid hostname, IPv4, IPv6');
     }
 
     return $host;
