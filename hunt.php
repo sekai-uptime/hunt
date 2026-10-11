@@ -3,12 +3,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-
-
 try {
-    if (!version_compare(PHP_VERSION, '8.5.0', ">=")) throw new RuntimeException("use php 8.5.0 or newer", 1);
-
-
+    if (!version_compare(PHP_VERSION, '8.5.0', ">=")) throw new RuntimeException("use php 8.5.0 or newer");
 
     check_parms();
     $parms = get_parms();
