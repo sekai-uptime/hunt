@@ -1,138 +1,211 @@
-# Network Checker API 🛠️
-[Persian Document](https://github.com/sekai-uptime/hunt/blob/main/README_fa.md)
+# HUNT - Host Uptime and Network Tracker
 
-A lightweight and practical **PHP** script/API designed to monitor network connectivity, test socket response times, query DNS records, and fetch HTTP request details. Responses are returned in a clean, structured **JSON** format.
+[Persian version](README_fa.md)
 
-## 📋 Features & Function Breakdown
+HUNT is a lightweight PHP API for checking host reachability, HTTP availability, and DNS records. It returns structured JSON responses and can be used from a browser, shell, or monitoring system.
 
-The script consists of the following core components and functions:
+## Features
 
-### 1. **Validation & Parameter Handling**
+- TCP connectivity check via `fsockopen`
+- HTTP status and timing check via cURL
+- DNS record lookup via `dns_get_record`
+- Strict validation for query parameters
+- Consistent JSON success/error responses
 
-* **`check_parms()`**: Ensures that the required parameters (`mode` and `host`) are present in the query string.
-* **`get_parms()`**: Extracts query parameters and assigns sensible default values (such as port 80 or a 3-second timeout) if they are missing.
+## Supported modes
 
-### 2. **Operation Modes**
+The script accepts a `mode` query parameter and switches behavior accordingly:
 
-Depending on the `mode` parameter provided in the request, the script executes one of three actions:
+- `ping` → checks whether a host and port are reachable
+- `status` → checks an HTTP URL and returns status and timing info
+- `nslookup` → retrieves DNS records for a host
 
-* **`ping` (`get_ping()` function)**:
-  * Establishes a TCP socket connection using `fsockopen`.
-  * Measures latency/response time in milliseconds.
+## Required parameters
 
-* **`status` (`check_url_status()` function)**:
-  * Executes an HTTP request via cURL and returns comprehensive connection information (such as HTTP response code, transfer speed, and execution duration).
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `mode` | Yes | — | One of `ping`, `status`, or `nslookup` |
+| `host` | Yes | — | Hostname, IPv4, IPv6, or local host name |
+| `port` | No | `80` | TCP port used by `ping` |
+| `timeout` | No | `3` | Timeout in seconds, from 1 to 30 |
+| `dns` | No | `DNS_NS + DNS_A + DNS_A6` | DNS record bitmask used by `nslookup` |
 
-* **`dns` (`check_dns()` function)**:
-  * Looks up DNS records for the specified domain and returns them as an array.
+Notes:
+- `host` may be a plain hostname like `example.com`, an IP address, or a URL such as `https://example.com`.
+- For `status`, the script normalizes the URL before making the request.
+- `ping` requires a valid host and port, while `status` does not use `port`.
 
-### 3. **Utility Functions**
+## Response format
 
-* **`JsonResponse()`**: Formats data as JSON, sets the `Content-Type: application/json` header, and terminates execution.
-* **`make_curl_request()`**: Sets up cURL options (including timeout configuration and bypassing SSL peer verification) and executes the request.
-* **`exitApp()`**: Emits HTTP status codes (e.g., `403 Forbidden` for unauthorized client IPs).
+All requests return JSON in this shape:
 
-## ⚙️ Query Parameters
-
-| Parameter | Type | Required | Default Value | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `mode` | String | **Yes** | - | Operation mode (`ping`, `status`, or `dns`) |
-| `host` | String | **Yes** | - | Target hostname or URL (e.g., `example.com`) |
-| `port` | Integer | No | `80` | Destination port for `ping` mode |
-| `timeout` | Integer | No | `3` | Connection timeout in seconds |
-| `dr` | Integer | No | `DNS_NS + DNS_A + DNS_A6` | Bitmask for DNS record types in PHP |
-
-## 🚀 Usage Examples
-
-Assuming the script is hosted at `http://localhost/hunt.php`:
-
-### 1. Ping / Latency Check
-
-Test connectivity to port 443 (HTTPS) on Google's server:
-
-**Request:**
-```http
-GET http://localhost/hunt.php?mode=ping&host=google.com&port=443&timeout=2
-```
-
-**JSON Response:**
+Success:
 ```json
 {
-  "error": false,
-  "time": 45.2
-}
-```
-
-### 2. Web Status / HTTP Details Check
-
-Fetch cURL transfer information and HTTP status:
-
-**Request:**
-```http
-GET http://localhost/hunt.php?mode=status&host=https://google.com
-```
-
-**JSON Response:**
-```json
-{
-  "url": "https://google.com/",
-  "content_type": "text/html; charset=ISO-8859-1",
-  "http_code": 200,
-  "header_size": 320,
-  "request_size": 54,
-  "filetime": -1,
-  "ssl_verify_result": 0,
-  "redirect_count": 0,
-  "total_time": 0.125,
-  "namelookup_time": 0.012,
-  "connect_time": 0.045,
-  "pretransfer_time": 0.089,
-  "size_upload": 0,
-  "size_download": 14210,
-  "speed_download": 113680,
-  "speed_upload": 0,
-  "download_content_length": -1,
-  "upload_content_length": -1,
-  "starttransfer_time": 0.124,
-  "redirect_time": 0
-}
-```
-
-### 3. DNS Lookup
-
-Query DNS records for a domain:
-
-**Request:**
-```http
-GET http://localhost/hunt.php?mode=nslookup&host=google.com
-```
-
-**JSON Response:**
-```json
-[
-  {
-    "host": "google.com",
-    "class": "IN",
-    "ttl": 300,
-    "type": "A",
-    "ip": "142.250.180.206"
-  },
-  {
-    "host": "google.com",
-    "class": "IN",
-    "ttl": 21600,
-    "type": "NS",
-    "target": "ns1.google.com"
+  "ok": true,
+  "data": {
+    "...": "..."
   }
-]
+}
 ```
 
-## 🔒 Security (IP Whitelisting)
+Error:
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "missing_mode",
+    "message": "Mode parameter is required."
+  }
+}
+```
 
-The script includes commented-out code for restricting access to specific IP addresses. To restrict usage to authorized clients or localhost, uncomment the following block:
+## Examples
 
+Assume the script is served at `http://localhost/hunt.php`.
+
+### 1) Ping a host
+
+Request:
+```http
+GET /hunt.php?mode=ping&host=example.com&port=443&timeout=2
+```
+
+Example response:
+```json
+{
+  "ok": true,
+  "data": {
+    "reachable": true,
+    "host": "example.com",
+    "port": 443,
+    "time_ms": 26.431
+  }
+}
+```
+
+If the port is closed or the host is unreachable, the API still responds with `ok: true` and includes an `error` object inside `data`:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "reachable": false,
+    "host": "example.com",
+    "port": 443,
+    "time_ms": 2011.924,
+    "error": {
+      "code": 0,
+      "message": "Connection failed."
+    }
+  }
+}
+```
+
+### 2) Check an HTTP URL status
+
+Request:
+```http
+GET /hunt.php?mode=status&host=https://example.com&timeout=5
+```
+
+Example response:
+```json
+{
+  "ok": true,
+  "data": {
+    "url": "https://example.com/",
+    "http_code": 200,
+    "content_type": "text/html; charset=UTF-8",
+    "total_time_ms": 142.871,
+    "connect_time_ms": 44.719
+  }
+}
+```
+
+### 3) Query DNS records
+
+Request:
+```http
+GET /hunt.php?mode=nslookup&host=example.com&dns=3
+```
+
+Example response:
+```json
+{
+  "ok": true,
+  "data": {
+    "host": "example.com",
+    "record_type": 3,
+    "records": [
+      {
+        "host": "example.com",
+        "class": "IN",
+        "ttl": 86400,
+        "type": "A",
+        "ip": "93.184.216.34"
+      }
+    ]
+  }
+}
+```
+
+## Validation rules
+
+The script validates all input before running the requested action:
+
+- `mode` must be present and not empty
+- `host` must be present and not empty
+- `port` must be an integer between 1 and 65535
+- `timeout` must be between 1 and 30 seconds
+- `dns` must be a positive integer
+- `host` must be a valid hostname, IPv4, IPv6, or local name
+
+## Error examples
+
+Some common errors:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "invalid_mode",
+    "message": "Invalid mode parameter. Supported modes: ping, status, nslookup."
+  }
+}
+```
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "missing_host",
+    "message": "Host parameter is required."
+  }
+}
+```
+
+## Security notes
+
+The current implementation does not include an IP whitelist. If you want to restrict access by source IP, add your own checks before the request logic runs.
+
+Example pattern:
 ```php
-const WHITE_LIST = ["127.0.0.1", "::1"]; // Allowed client IPs
-$clientIP = $_SERVER['REMOTE_ADDR'];
-if (!in_array($clientIP, WHITE_LIST, true)) exitApp(403);
+$allowedIps = ['127.0.0.1', '::1'];
+$clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+if (!in_array($clientIp, $allowedIps, true)) {
+    http_response_code(403);
+    exit;
+}
+```
+
+## Quick start
+
+1. Place `hunt.php` on a PHP-enabled web server.
+2. Open the file in a browser or call it with query parameters.
+3. Use `mode=ping`, `mode=status`, or `mode=nslookup` based on what you need to check.
+
+Example command:
+```bash
+curl "http://localhost/hunt.php?mode=status&host=https://example.com"
 ```

@@ -1,140 +1,211 @@
-# HUNT - Host Uptime and Network Tracker 🛠️
-این اسکریپت یک ابزار کاربردی و سبک به زبان **PHP** برای بررسی وضعیت شبکه‌ای، سرورها، رکورد‌های DNS و درخواست‌های HTTP است. با استفاده از این API می‌توانید وضعیت در دسترس بودن یک هاست یا وب‌سایت را سنجیده و خروجی را به صورت ساختاریافته **JSON** دریافت کنید.
+# HUNT - Host Uptime and Network Tracker
 
----
+[English version](README.md)
 
-## 📋 ویژگی‌ها و بخش‌های اصلی اسکریپت
+HUNT یک API سبک PHP برای بررسی دسترسی‌پذیری هاست، وضعیت HTTP و رکوردهای DNS است. خروجی‌ها به‌صورت JSON ساختاریافته برگردانده می‌شوند و می‌توان از آن‌ها در مرورگر، خط فرمان یا سیستم‌های مانیتورینگ استفاده کرد.
 
-اسکریپت از توابع و بخش‌های زیر تشکیل شده است:
+## ویژگی‌ها
 
-### ۱. **بخش ورودی و اعتبارسنجی (Validation & Parameters)**
-* **`check_parms()`**: بررسی می‌کند که حتماً دو پارامتر اجباری `mode` و `host` ارسال شده باشند.
-* **`get_parms()`**: پارامترهای دریافتی از `GET` را پردازش کرده و در صورت عدم ارسال، مقادیر پیش‌فرض تعیین می‌کند (مانند پورت ۸۰ یا تایم‌اوت ۳ ثانیه).
+- بررسی اتصال TCP با `fsockopen`
+- بررسی وضعیت و زمان پاسخ HTTP با cURL
+- استعلام رکوردهای DNS با `dns_get_record`
+- اعتبارسنجی دقیق ورودی‌های GET
+- پاسخ‌های سازگار JSON برای حالت‌های موفق و خطا
 
-### ۲. **حالت‌های کاری (Operation Modes)**
-اسکریپت بر اساس پارامتر `mode` یکی از سه عملکرد زیر را اجرا می‌کند:
+## حالت‌های پشتیبانی‌شده
 
-* **`ping` (تابع `get_ping`)**: 
-  * با استفاده از `fsockopen` اتصال TCP به هاست و پورت مشخص‌شده ایجاد می‌کند.
-  * زمان پاسخ‌گویی (Latency/Ping) را بر حسب میلی‌ثانیه محاسبه می‌کند.
-* **`status` (تابع `check_url_status`)**:
-  * با استفاده از cURL یک درخواست HTTP به آدرس مقصد فرستاده و اطلاعات جامع مربوط به اتصال (مانند HTTP Status Code، زمان بارگذاری و...) را بازمی‌گرداند.
-* **`dns` (تابع `check_dns`)**:
-  * رکوردهای DNS دامنه مورد نظر را استعلام (Lookup) کرده و به صورت آرایه بازمی‌گرداند.
+اسکریپت براساس پارامتر `mode` رفتار خود را تغییر می‌دهد:
 
-### ۳. **توابع کمکی (Utility Functions)**
-* **`JsonResponse()`**: خروجی را با فرمت JSON و هدر `application/json` ارسال کرده و برنامه را پایان می‌دهد.
-* **`make_curl_request()`**: تنظیمات پایه cURL (شامل تایم‌اوت و لغو بررسی گواهی SSL) را اعمال و اجرا می‌کند.
-* **`exitApp()`**: برای ارسال کدهای وضعیت HTTP (مانند کد ۴۰۳ برای آی‌پی‌های غیرمجاز) استفاده می‌شود.
+- `ping` → بررسی در دسترس بودن هاست و پورت
+- `status` → بررسی URLهای HTTP و بازگشت کد وضعیت و زمان‌ها
+- `nslookup` → دریافت رکوردهای DNS برای یک هاست
 
----
+## پارامترهای اجباری
 
-## ⚙️ پارامترهای ورودی (Query Parameters)
+| پارامتر | اجباری | پیش‌فرض | توضیح |
+| --- | --- | --- | --- |
+| `mode` | بله | — | یکی از `ping`، `status` یا `nslookup` |
+| `host` | بله | — | نام دامنه، IPv4، IPv6 یا نام محلی |
+| `port` | خیر | `80` | پورت TCP مورد استفاده در حالت `ping` |
+| `timeout` | خیر | `3` | زمان انتظار بر حسب ثانیه، از ۱ تا ۳۰ |
+| `dns` | خیر | `DNS_NS + DNS_A + DNS_A6` | بیت‌ماسک نوع رکورد DNS برای `nslookup` |
 
-| پارامتر | نوع | اجباری؟ | مقدار پیش‌فرض | توضیحات |
-| :--- | :--- | :--- | :--- | :--- |
-| `mode` | String | **بله** | - | نوع تست (`ping` / `status` / `dns`) |
-| `host` | String | **بله** | - | دامنه یا IP مورد نظر (مثال: `example.com`) |
-| `port` | Integer | خیر | `80` | پورت مورد نظر برای حالت `ping` |
-| `timeout` | Integer | خیر | `3` | حداکثر زمان انتظار بر حسب ثانیه |
-| `dr` | Integer | خیر | `DNS_NS + DNS_A + DNS_A6` | کد عددی نوع رکورد DNS در PHP |
+نکته‌ها:
+- `host` می‌تواند نام دامنه مانند `example.com`، آدرس IP یا URL مانند `https://example.com` باشد.
+- برای حالت `status`، اسکریپت URL را قبل از درخواست نرمال‌سازی می‌کند.
+- حالت `ping` از `port` استفاده می‌کند، اما `status` از آن استفاده نمی‌کند.
 
----
+## قالب پاسخ
 
-## 🚀 مثال‌های استفاده (Usage Examples)
+همه درخواست‌ها با JSON برگردانده می‌شوند:
 
-فرض کنید اسکریپت روی `http://localhost/hunt.php` میزبانی شده است:
-
-### ۱. تست Ping و بررسی زمان پاسخ‌گویی
-برای تست باز بودن پورت 443 (HTTPS) روی سرور گوگل:
-
-**درخواست:**
-```http
-GET http://localhost/hunt.php?mode=ping&host=google.com&port=443&timeout=2
-```
-
-**نمونه خروجی JSON:**
+موفق:
 ```json
 {
-  "error": false,
-  "time": 45.2
-}
-```
-
----
-
-### ۲. بررسی وضعیت وب‌سایت (HTTP Status & cURL Info)
-برای دریافت جزئیات اتصال HTTP و کد وضعیت سایت:
-
-**درخواست:**
-```http
-GET http://localhost/hunt.php?mode=status&host=https://google.com
-```
-
-**نمونه خروجی JSON:**
-```json
-{
-  "url": "https://google.com/",
-  "content_type": "text/html; charset=ISO-8859-1",
-  "http_code": 200,
-  "header_size": 320,
-  "request_size": 54,
-  "filetime": -1,
-  "ssl_verify_result": 0,
-  "redirect_count": 0,
-  "total_time": 0.125,
-  "namelookup_time": 0.012,
-  "connect_time": 0.045,
-  "pretransfer_time": 0.089,
-  "size_upload": 0,
-  "size_download": 14210,
-  "speed_download": 113680,
-  "speed_upload": 0,
-  "download_content_length": -1,
-  "upload_content_length": -1,
-  "starttransfer_time": 0.124,
-  "redirect_time": 0
-}
-```
-
----
-
-### ۳. استعلام رکوردهای DNS
-برای دریافت رکوردهای DNS یک دامنه:
-
-**درخواست:**
-```http
-GET http://localhost/hunt.php?mode=nslookup&host=google.com
-```
-
-**نمونه خروجی JSON:**
-```json
-[
-  {
-    "host": "google.com",
-    "class": "IN",
-    "ttl": 300,
-    "type": "A",
-    "ip": "142.250.180.206"
-  },
-  {
-    "host": "google.com",
-    "class": "IN",
-    "ttl": 21600,
-    "type": "NS",
-    "target": "ns1.google.com"
+  "ok": true,
+  "data": {
+    "...": "..."
   }
-]
+}
 ```
 
----
+خطا:
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "missing_mode",
+    "message": "Mode parameter is required."
+  }
+}
+```
 
-## 🔒 امنیت (IP Whitelist)
+## مثال‌ها
 
-در انتهای فایل، بخش کنترل دسترسی (IP Whitelist) به صورت کامنت قرار گرفته است. در صورت نیاز به محدودسازی دسترسی به افراد/سرورهای خاص، می‌توانید آن را فعال کنید:
+فرض کنید اسکریپت در `http://localhost/hunt.php` اجرا می‌شود.
 
+### ۱) بررسی اتصال به یک هاست
+
+درخواست:
+```http
+GET /hunt.php?mode=ping&host=example.com&port=443&timeout=2
+```
+
+نمونه پاسخ:
+```json
+{
+  "ok": true,
+  "data": {
+    "reachable": true,
+    "host": "example.com",
+    "port": 443,
+    "time_ms": 26.431
+  }
+}
+```
+
+اگر پورت بسته باشد یا هاست در دسترس نباشد، API همچنان با `ok: true` پاسخ می‌دهد و یک `error` داخل `data` می‌فرستد:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "reachable": false,
+    "host": "example.com",
+    "port": 443,
+    "time_ms": 2011.924,
+    "error": {
+      "code": 0,
+      "message": "Connection failed."
+    }
+  }
+}
+```
+
+### ۲) بررسی وضعیت یک URL HTTP
+
+درخواست:
+```http
+GET /hunt.php?mode=status&host=https://example.com&timeout=5
+```
+
+نمونه پاسخ:
+```json
+{
+  "ok": true,
+  "data": {
+    "url": "https://example.com/",
+    "http_code": 200,
+    "content_type": "text/html; charset=UTF-8",
+    "total_time_ms": 142.871,
+    "connect_time_ms": 44.719
+  }
+}
+```
+
+### ۳) استعلام رکوردهای DNS
+
+درخواست:
+```http
+GET /hunt.php?mode=nslookup&host=example.com&dns=3
+```
+
+نمونه پاسخ:
+```json
+{
+  "ok": true,
+  "data": {
+    "host": "example.com",
+    "record_type": 3,
+    "records": [
+      {
+        "host": "example.com",
+        "class": "IN",
+        "ttl": 86400,
+        "type": "A",
+        "ip": "93.184.216.34"
+      }
+    ]
+  }
+}
+```
+
+## قوانین اعتبارسنجی
+
+قبل از اجرای درخواست، ورودی‌ها بررسی می‌شوند:
+
+- `mode` باید وجود داشته و خالی نباشد
+- `host` باید وجود داشته و خالی نباشد
+- `port` باید عددی بین ۱ تا ۶۵۵۳۵ باشد
+- `timeout` باید بین ۱ تا ۳۰ ثانیه باشد
+- `dns` باید عددی مثبت باشد
+- `host` باید نام دامنه، IPv4، IPv6 یا نام محلی معتبر باشد
+
+## نمونه خطاها
+
+برخی خطاهای رایج:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "invalid_mode",
+    "message": "Invalid mode parameter. Supported modes: ping, status, nslookup."
+  }
+}
+```
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "missing_host",
+    "message": "Host parameter is required."
+  }
+}
+```
+
+## نکات امنیتی
+
+در نسخه فعلی، لیست سفید IP وجود ندارد. اگر بخواهید دسترسی را فقط برای آدرس‌های مشخصی محدود کنید، قبل از اجرای درخواست، بررسیِ IP را اضافه کنید.
+
+نمونه:
 ```php
-const WHITE_LIST = ["127.0.0.1", "::1"]; // آی‌پی‌های مجاز
-$clientIP = $_SERVER['REMOTE_ADDR'];
-if (!in_array($clientIP, WHITE_LIST, true)) exitApp(403);
+$allowedIps = ['127.0.0.1', '::1'];
+$clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+if (!in_array($clientIp, $allowedIps, true)) {
+    http_response_code(403);
+    exit;
+}
+```
+
+## شروع سریع
+
+1. فایل `hunt.php` را روی سرور PHP قرار دهید.
+2. آن را در مرورگر باز کنید یا با پارامترهای GET فراخوانی کنید.
+3. بر اساس نیاز، یکی از `mode=ping`، `mode=status` یا `mode=nslookup` را انتخاب کنید.
+
+نمونه دستور:
+```bash
+curl "http://localhost/hunt.php?mode=status&host=https://example.com"
 ```
